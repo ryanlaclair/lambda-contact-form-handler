@@ -33,11 +33,23 @@ module.exports.handleForm = async (event, context) => {
     const data = await ses.sendEmail(emailParams).promise();
 
     return {
-      statusCode: 200
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'x-requested-with',
+        'Access-Control-Allow-Credentials': true
+      },
+      statusCode: 200,
+      body: JSON.stringify(data)
     };
   } catch (err) {
     return {
-      statusCode: 500
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'x-requested-with',
+        'Access-Control-Allow-Credentials': true
+      },
+      statusCode: 500,
+      body: JSON.stringify(err.message)
     };
   }
 };
