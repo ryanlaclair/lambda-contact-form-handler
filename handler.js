@@ -1,9 +1,20 @@
 'use strict';
 
 const aws = require('aws-sdk');
-const ses = new aws.SES();
+const request = require('request');
 
 const myEmail = process.env.EMAIL;
+const secret = process.env.SECRET;
+
+const ses = new aws.SES();
+
+const response = {
+  headers: {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'x-requested-with',
+    'Access-Control-Allow-Credentials': true
+  }
+};
 
 function generateEmailParams(body) {
   const { firstName, lastName, email, message } = JSON.parse(body);
@@ -27,29 +38,49 @@ function generateEmailParams(body) {
   };
 }
 
-module.exports.handleForm = async (event, context) => {
+module.exports.handleForm = async (event, context, callback) => {
   try {
-    const emailParams = generateEmailParams(event.body);
-    const data = await ses.sendEmail(emailParams).promise();
+    const token = event.body.token;
 
-    return {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'x-requested-with',
-        'Access-Control-Allow-Credentials': true
+    await request.post(
+      {
+        url: 'https://www.google.com/recaptcha/api/siteverify',
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'x-requested-with',
+          'Access-Control-Allow-Credentials': true
+        },
+        form: {
+          secret: secret,
+          response: token
+        }
       },
-      statusCode: 200,
-      body: JSON.stringify(data)
-    };
+      (err, res, body) => {
+        const recaptcha = JSON.parse(body);
+
+        if (err) {
+          response.statusCode = 500;
+          response.body = JSON.stringify(err);
+        } else if (res.statusCode != 200) {
+          response.statusCode = 420;
+          response.body = res.body;
+        } else if (recaptcha.success && recaptcha.score > 0.5) {
+          response.statusCode = 200;
+
+          const emailParams = generateEmailParams(event.body);
+          ses.sendEmail(emailParams);
+        } else {
+          response.statusCode = 500;
+          body.secret = secret;
+          body.token = token;
+          response.body = body;
+        }
+      }
+    );
+
+    callback(null, response);
   } catch (err) {
-    return {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'x-requested-with',
-        'Access-Control-Allow-Credentials': true
-      },
-      statusCode: 500,
-      body: JSON.stringify(err.message)
-    };
+    response.statusCode = 500;
+    callback(null, response);
   }
 };
