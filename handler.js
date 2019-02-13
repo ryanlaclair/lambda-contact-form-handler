@@ -1,20 +1,12 @@
 'use strict';
 
 const aws = require('aws-sdk');
-const request = require('request');
+const axios = require('axios');
 
 const myEmail = process.env.EMAIL;
-const secret = process.env.SECRET;
+const secret = process.env.CAPTCHA;
 
 const ses = new aws.SES();
-
-const response = {
-  headers: {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'x-requested-with',
-    'Access-Control-Allow-Credentials': true
-  }
-};
 
 function generateEmailParams(body) {
   const { firstName, lastName, email, message } = JSON.parse(body);
@@ -39,48 +31,47 @@ function generateEmailParams(body) {
 }
 
 module.exports.handleForm = async (event, context, callback) => {
+  var response = {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Credentials': false
+    }
+  };
+
   try {
-    const token = event.body.token;
+    const token = JSON.parse(event.body).token;
 
-    await request.post(
-      {
-        url: 'https://www.google.com/recaptcha/api/siteverify',
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'x-requested-with',
-          'Access-Control-Allow-Credentials': true
-        },
-        form: {
-          secret: secret,
-          response: token
-        }
-      },
-      (err, res, body) => {
-        const recaptcha = JSON.parse(body);
-
-        if (err) {
-          response.statusCode = 500;
-          response.body = JSON.stringify(err);
-        } else if (res.statusCode != 200) {
-          response.statusCode = 420;
-          response.body = res.body;
-        } else if (recaptcha.success && recaptcha.score > 0.5) {
-          response.statusCode = 200;
-
-          const emailParams = generateEmailParams(event.body);
-          ses.sendEmail(emailParams);
-        } else {
-          response.statusCode = 500;
-          body.secret = secret;
-          body.token = token;
-          response.body = body;
-        }
+    var res = await axios({
+      method: 'POST',
+      url: 'https://www.google.com/recaptcha/api/siteverify',
+      params: {
+        secret: secret,
+        response: token
       }
-    );
+    });
 
-    callback(null, response);
+    if (res.status == 200 && res.data.success && res.data.score > 0.5) {
+      console.log('Sending email');
+
+      const emailParams = generateEmailParams(event.body);
+      const data = await ses.sendEmail(emailParams).promise();
+
+      response.statusCode = 200;
+      response.body = JSON.stringify(data);
+
+      return response;
+    } else {
+      console.log('Invalid recaptcha');
+
+      response.statusCode = 500;
+      response.body = JSON.stringify({ status: 'Invalid recaptcha' });
+
+      return response;
+    }
   } catch (err) {
     response.statusCode = 500;
-    callback(null, response);
+    response.body = JSON.stringify(err);
+
+    return response;
   }
 };

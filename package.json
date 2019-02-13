@@ -1,0 +1,25 @@
+{
+  "name": "lambda-contact-form-handler",
+  "version": "1.0.0",
+  "description": "Install Serverless framework, and configure for use with Amazon Lambda.",
+  "main": "handler.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ryanlaclair/lambda-contact-form-handler.git"
+  },
+  "author": "Ryan LaClair",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ryanlaclair/lambda-contact-form-handler/issues"
+  },
+  "homepage": "https://github.com/ryanlaclair/lambda-contact-form-handler#readme",
+  "dependencies": {
+    "axios": "^0.18.0"
+  },
+  "devDependencies": {
+    "aws-sdk": "^2.401.0"
+  }
+}

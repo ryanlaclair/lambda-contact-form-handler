@@ -24,16 +24,4 @@ functions:
       - http:
           path: /
           method: post
-          cors:
-            origin: '*'
-            headers:
-              - Content-Type
-              - X-Amz-Date
-              - Authorization
-              - X-Api-Key
-              - X-Amz-Security-Token
-              - X-Amz-User-Agent
-            methods:
-              - OPTIONS
-              - POST
-            allowCredentials: false
+          cors: true
